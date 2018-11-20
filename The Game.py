@@ -1,15 +1,16 @@
 """ Creates a webcrawler that scraps all the info that i need from and exports to a CSV File """
 
-
+import urllib.request
 
 import bs4 as bs
-
-import urllib.request
 
 my_Url = 'https://myanimelist.net/character.php?letter=A'
 
 whole_Website = urllib.request.urlopen(my_Url).read()  ##Finds Website
-soup = bs.BeautifulSoup(whole_Website, "html.parser") ## turns it into a BS object
+soup = bs.BeautifulSoup(whole_Website, "html.parser")  ## turns it into a BS object
+
+# TODO: Fix error that occurs here when parsing Japanese language data
+# 'https://myanimelist.net/character/138415/Grace_Aihara'
 """
 ## Create CSV
 filename = "The Game2.csv "
@@ -19,24 +20,31 @@ f.write(headers)"""
 
 table_rows_container = soup.find_all('tr')  ##Kind of finds the the bbest option.
 
-for containers in table_rows_container[1:]: ## makes all the containers into links
-    link = containers.td.a.get('href') ##gets links to characters
+for containers in table_rows_container[1:]:  ## makes all the containers into links
+    link = containers.td.a.get('href')  ##gets links to characters
 
-    character_Page = urllib.request.urlopen(link).read() ##finds character page
-    character_Soup = bs.BeautifulSoup(character_Page, "html.parser") ## turns it into a bs object
+    # TODO: Fix UnicodeEncodeError that occurs here, immediately after character 'Miguel, Aiman'
+    # UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 43: ordinal not in range(128)
+    # See docs here => https://docs.python.org/2.7/howto/unicode.html#the-unicode-type
+    character_Page = urllib.request.urlopen(link).read()  ##finds character page
+    character_Soup = bs.BeautifulSoup(character_Page, "html.parser")  ## turns it into a bs object
 
-    find_Name = character_Soup.findAll("h1", {"class", "h1"}) ##locates character name
-    real_Name = find_Name[0].text         ##outputs character name
+    find_Name = character_Soup.findAll("h1", {"class", "h1"})  ##locates character name
+    real_Name = find_Name[0].text  ##outputs character name
 
     find_Show = character_Soup.findAll('div', {'class': 'normal_header'})
     real_Show = find_Show[1].text
 
+    # TODO: If character is in ONLY Manga, we can just skip over it (Joe 'reeeaally doesn't give a fuck...')
+    # Otherwise pull name of show (only first show is needed) and whether character is main or supporting.
+    # i.e. skip over => 'https://myanimelist.net/character/86811/Leos_Alloy'
+    # i.e. don't skip => 'https://myanimelist.net/character/135321/Alice_Alligator'
     ###print(show_Manga_Container)
     show_Manga_Container = character_Soup.findAll("tr")
 
-    for info in show_Manga_Container[0:1]: ##finds link
+    for info in show_Manga_Container[0:1]:  ##finds link
         showlink = info.td.a.find()  ## gets pitcutre characterlink
-        character_Img = str(showlink.get('src')) ## saves just character link
+        character_Img = str(showlink.get('src'))  ## saves just character link
 
     ##Turn the Website into text
     textWebsite = character_Soup.get_text()
@@ -53,45 +61,13 @@ for containers in table_rows_container[1:]: ## makes all the containers into lin
     ##print(link)
     print(real_Name)  ## prints name of character
     ##print(real_Show)
-    print(character_Img) ##gives link to character image
+    print(character_Img)  ##gives link to character image
 
-    print(final_Character_Favortites.replace("\n", "")) ##print number of favorites
+    print(final_Character_Favortites.replace("\n", ""))  ##print number of favorites
 
     """f.write(real_Name.replace(",", "") + ", " + character_Img + ", " + final_Character_Favortites.replace("\n", '') + "\n")
 
 f.close()"""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 """1
  'my_Url = 'https://myanimelist.net/character.php'
@@ -129,8 +105,6 @@ for container in containers:
     f.write(real_Name.replace(",", "") + "," + real_Show + "," + real_Favorites.replace(",", "") + "\n")
 
 f.close()"""
-
-
 
 """
 This works
