@@ -2,7 +2,10 @@
 
 import urllib.request
 
+import sys
 import bs4 as bs
+import requests
+import re
 
 my_Url = 'https://myanimelist.net/character.php?letter=A'
 
@@ -11,22 +14,30 @@ soup = bs.BeautifulSoup(whole_Website, "html.parser")  ## turns it into a BS obj
 
 # TODO: Fix error that occurs here when parsing Japanese language data
 # 'https://myanimelist.net/character/138415/Grace_Aihara'
-"""
-## Create CSV
+
+# Create CSV
 filename = "The Game2.csv "
-f = open(filename, "w")git remote add origin https://github.com/bengals59/AnimeGame.git
+f = open(filename, mode="w",encoding='utf-8') #git remote add origin https://github.com/bengals59/AnimeGame.git
 headers = "Character_Name, Favorites, image link\n"
-f.write(headers)"""
+f.write(headers)
 
 table_rows_container = soup.find_all('tr')  ##Kind of finds the the bbest option.
 
 for containers in table_rows_container[1:]:  ## makes all the containers into links
+
     link = containers.td.a.get('href')  ##gets links to characters
 
-    # TODO: Fix UnicodeEncodeError that occurs here, immediately after character 'Miguel, Aiman'
-    # UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 43: ordinal not in range(128)
-    # See docs here => https://docs.python.org/2.7/howto/unicode.html#the-unicode-type
-    character_Page = urllib.request.urlopen(link).read()  ##finds character page
+    #Getting request
+    request = requests.get(link)
+
+    #Handling response codes
+    #TODO: Setup failures, main one you have to look out for is 429 as you don't have any sleeps and are flooding calls.
+    if not request.ok:
+        print("ERROR: Response code: " + str(request.status_code) + " Terminating\n")
+        exit(-2)
+
+
+    character_Page = request.text ##finds character page
     character_Soup = bs.BeautifulSoup(character_Page, "html.parser")  ## turns it into a bs object
 
     find_Name = character_Soup.findAll("h1", {"class", "h1"})  ##locates character name
@@ -50,20 +61,17 @@ for containers in table_rows_container[1:]:  ## makes all the containers into li
     textWebsite = character_Soup.get_text()
 
     ##Find the index of number of favorites
-
     position_of_Text = textWebsite.index('Member Favorites:')
 
-    ## Finds number of Number of favorites
+    #Finds number of Number of favorites
     character_Favorites = textWebsite[position_of_Text + 17:position_of_Text + 24]
-    stall_Character_favorites = character_Favorites.replace(",", "")
-    final_Character_Favortites = str(stall_Character_favorites)
+    favCount = re.sub('[^0-9]', '',character_Favorites)
 
-    ##print(link)
-    print(real_Name)  ## prints name of character
+    #Printing Char Name, Image Link, Fav Count
+    sys.stdout.buffer.write((real_Name + '\n').encode('utf-8'))
     ##print(real_Show)
-    print(character_Img)  ##gives link to character image
-
-    print(final_Character_Favortites.replace("\n", ""))  ##print number of favorites
+    sys.stdout.buffer.write((character_Img + '\n').encode('utf-8'))
+    print(favCount)
 
     """f.write(real_Name.replace(",", "") + ", " + character_Img + ", " + final_Character_Favortites.replace("\n", '') + "\n")
 
