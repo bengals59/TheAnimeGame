@@ -1,19 +1,21 @@
 """ Creates a webcrawler that scraps all the info that i need from and exports to a CSV File """
 
-import urllib.request
-
 import sys
 import bs4 as bs
 import requests
 import re
+import time
+
+
+#Using these to count run count and current sleep time every 20 successful runs we will set it back down to 0
+timeToSleep = 0.1
+runCount = 0
+
 
 my_Url = 'https://myanimelist.net/character.php?letter=A'
 
-whole_Website = urllib.request.urlopen(my_Url).read()  ##Finds Website
+whole_Website = requests.get(my_Url).text  ##Finds Website
 soup = bs.BeautifulSoup(whole_Website, "html.parser")  ## turns it into a BS object
-
-# TODO: Fix error that occurs here when parsing Japanese language data
-# 'https://myanimelist.net/character/138415/Grace_Aihara'
 
 # Create CSV
 filename = "The Game2.csv "
@@ -26,30 +28,36 @@ table_rows_container = soup.find_all('tr')  ##Kind of finds the the bbest option
 for containers in table_rows_container[1:]:  ## makes all the containers into links
 
     link = containers.td.a.get('href')  ##gets links to characters
-
     #Getting request
     request = requests.get(link)
 
     #Handling response codes
-    #TODO: Setup failures, main one you have to look out for is 429 as you don't have any sleeps and are flooding calls.
-    if not request.ok:
-        print("ERROR: Response code: " + str(request.status_code) + " Terminating\n")
-        exit(-2)
+    while not request.ok:
+        timeToSleep += 1
+        print("ERROR: Response code: " + str(request.status_code) + " waiting " + str(timeToSleep) + " seconds.")
+        time.sleep(timeToSleep)
+        request = requests.get(link)
 
 
     character_Page = request.text ##finds character page
     character_Soup = bs.BeautifulSoup(character_Page, "html.parser")  ## turns it into a bs object
 
-    find_Name = character_Soup.findAll("h1", {"class", "h1"})  ##locates character name
-    real_Name = find_Name[0].text  ##outputs character name
+    #Checks if character is in an anime
+    #Probably can do better pattern matching, but this should get you started.
+    bAnimeography = ('Animeography</div>\n\t\t<table border="0" cellpadding="0" cellspacing="0" width="100%">None').encode(request.encoding)
+    if request.content.find(bAnimeography) != -1:
+        print("Character not in an anime, skipping")
+        continue
 
+    find_Name = character_Soup.findAll("h1", {"class", "h1"})  ##locates character name
+
+    #outputs character name. Has space at start sometimes. Regex to remove
+    real_Name = re.sub('^\s', '', find_Name[0].text)
+    #Removing double spaces
+    real_Name = re.sub('\s\s+', ' ', find_Name[0].text)
     find_Show = character_Soup.findAll('div', {'class': 'normal_header'})
     real_Show = find_Show[1].text
 
-    # TODO: If character is in ONLY Manga, we can just skip over it (Joe 'reeeaally doesn't give a fuck...')
-    # Otherwise pull name of show (only first show is needed) and whether character is main or supporting.
-    # i.e. skip over => 'https://myanimelist.net/character/86811/Leos_Alloy'
-    # i.e. don't skip => 'https://myanimelist.net/character/135321/Alice_Alligator'
     ###print(show_Manga_Container)
     show_Manga_Container = character_Soup.findAll("tr")
 
@@ -69,9 +77,16 @@ for containers in table_rows_container[1:]:  ## makes all the containers into li
 
     #Printing Char Name, Image Link, Fav Count
     sys.stdout.buffer.write((real_Name + '\n').encode('utf-8'))
-    ##print(real_Show)
+    sys.stdout.buffer.write((real_Show + '\n').encode('utf-8'))
     sys.stdout.buffer.write((character_Img + '\n').encode('utf-8'))
     print(favCount)
+
+    if runCount > 10:
+        runCount = 0
+        timeToSleep = 0.1
+    #Sleeping on completion so we don't get locked out.
+    time.sleep(timeToSleep)
+    runCount += 1
 
     """f.write(real_Name.replace(",", "") + ", " + character_Img + ", " + final_Character_Favortites.replace("\n", '') + "\n")
 
