@@ -41,7 +41,6 @@ for containers in table_rows_container[1:]:  ## makes all the containers into li
 
     character_Page = request.text ##finds character page
     character_Soup = bs.BeautifulSoup(character_Page, "html.parser")  ## turns it into a bs object
-
     #Checks if character is in an anime
     #Probably can do better pattern matching, but this should get you started.
     bAnimeography = ('Animeography</div>\n\t\t<table border="0" cellpadding="0" cellspacing="0" width="100%">None').encode(request.encoding)
@@ -56,8 +55,8 @@ for containers in table_rows_container[1:]:  ## makes all the containers into li
     #Removing double spaces
     real_Name = re.sub('\s\s+', ' ', find_Name[0].text)
     find_Show = character_Soup.findAll('div', {'class': 'normal_header'})
-    real_Show = find_Show[1].text
-
+    #Grabbing show title
+    real_Show = re.search("\((.*?)\)", character_Soup.title.string).group(0)[1:-1]
     ###print(show_Manga_Container)
     show_Manga_Container = character_Soup.findAll("tr")
 
